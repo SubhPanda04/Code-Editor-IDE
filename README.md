@@ -1,7 +1,11 @@
-🚀 Code Editor IDE
+# 🚀 Code Editor IDE
+
 A powerful, full-featured browser-based Code Editor IDE built with modern web technologies. This project offers seamless code editing, project management, and AI-assisted development using Google’s Gemini API — all inside your browser.
 
-🛠️ Tech Stack
+
+
+# 🛠️ Tech Stack
+
 | Technology       | Description                                         |
 | ---------------- | --------------------------------------------------- |
 | **ReactJS**      | Frontend framework for building the UI              |
@@ -9,9 +13,9 @@ A powerful, full-featured browser-based Code Editor IDE built with modern web te
 | **Firebase**     | Authentication, Firestore (NoSQL DB) & file storage |
 | **Gemini API**   | AI integration for code generation & suggestions    |
 
-✨ Features
-⚙️ Real-Time Code Editing
-Multi-tab editor with syntax highlighting and smooth navigation between files.
+
+
+# ✨ Features
 
 📂 Project Management System
 Create, save, and manage multiple projects and files effortlessly in the cloud.
