@@ -330,7 +330,7 @@ const Editor = () => {
           <span>Room: {roomParam}</span>
         </div>
       )}
-      
+      <div className="h-full">
       <MonacoEditor
         height="100%"
         defaultLanguage={editorLanguage}
@@ -371,9 +371,11 @@ const Editor = () => {
         }}
         key={currentFile.id}
       />
+      </div>
+      {/* Render AI assistant when enabled */}
+      {isAIEnabled && <AIAssistant />}
     </div>
   );
 };
 
 export default Editor;
-
