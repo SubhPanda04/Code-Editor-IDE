@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from 'react';
 import { FaRobot, FaTimes, FaPaperPlane, FaSpinner } from 'react-icons/fa';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -19,7 +20,7 @@ const AIAssistant = () => {
     setLoading(true);
     try {
       // Check if API key is being read
-      const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
       console.log("API Key available:", apiKey ? "Yes" : "No");
       
       
