@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useCallback, useState, useMemo } from 'react';
-import MonacoEditor from '@monaco-editor/react';
+"use client";
+import React, { useEffect, useRef, useCallback, useState, useMemo, Suspense } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { setFileContent, clearUnsavedChanges } from '../redux/slices/editorSlice';
 import { editorOptions } from '../config/editorConfig';
 import { debounce } from 'lodash';
@@ -9,7 +9,13 @@ import { Code2, Share2, Copy, Check } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase.config';
 import { toast } from 'react-hot-toast';
-import AIAssistant from './AIAssistant';
+
+// Lazy load Monaco Editor to improve initial load time
+const MonacoEditor = React.lazy(() =>
+  import('@monaco-editor/react').then(module => ({ default: module.default }))
+);
+
+const AIAssistant = React.lazy(() => import('./AIAssistant'));
 
 const getLanguageFromFileName = (fileName) => {
   if (!fileName) return 'plaintext';
@@ -40,16 +46,15 @@ const Editor = () => {
   const dispatch = useDispatch();
   const { currentFile, activeFiles, selectedTheme, isAIEnabled } = useSelector((state) => state.editor);
   const { currentFolder } = useSelector((state) => state.fileSystem);
-  const location = useLocation();
-  const navigate = useNavigate();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [ws, setWs] = useState(null);
   const [joinStatus, setJoinStatus] = useState('idle');
   const [copied, setCopied] = useState(false);
   const [editorReady, setEditorReady] = useState(false);
-  
-  const urlParams = new URLSearchParams(location.search);
-  const roomParam = urlParams.get('room');
+
+  const roomParam = searchParams.get('room');
   
   const currentContent = useMemo(() => {
     if (!currentFile) return '';
@@ -65,13 +70,12 @@ const Editor = () => {
     if (!roomParam) {
       const newRoomId = Math.random().toString(36).substring(2, 9);
       localStorage.setItem('isRoomOwner', 'true');
-      const currentPath = window.location.pathname;
-      const newUrl = `${currentPath}?room=${newRoomId}`;
-      
-      navigate(newUrl, { replace: true });
-      
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.set('room', newRoomId);
+      setSearchParams(newSearchParams);
+
       setTimeout(() => {
-        copyToClipboard(`${window.location.origin}${newUrl}`);
+        copyToClipboard(`${window.location.origin}${window.location.pathname}?${newSearchParams.toString()}`);
       }, 100);
     } else {
       copyToClipboard(`${window.location.origin}${window.location.pathname}?room=${roomParam}`);
@@ -229,7 +233,7 @@ const Editor = () => {
               setJoinStatus('rejected');
               if (data.userId === localStorage.getItem('userUID')) {
                 alert('Your request to join the room was rejected.');
-                window.location.href = '/home/projects';
+                router.push('/home/projects');
               }
               break;
               
@@ -295,8 +299,7 @@ const Editor = () => {
     }));
     debouncedUpdate(currentFile.id, value);
     
-    const urlParams = new URLSearchParams(location.search);
-    const roomParam = urlParams.get('room');
+    const roomParam = searchParams.get('room');
     
     if (ws && ws.readyState === WebSocket.OPEN && roomParam && 
         (joinStatus === 'accepted' || joinStatus === 'owner')) {
@@ -331,49 +334,62 @@ const Editor = () => {
         </div>
       )}
       <div className="h-full">
-      <MonacoEditor
-        height="100%"
-        defaultLanguage={editorLanguage}
-        language={editorLanguage}
-        value={currentContent}
-        theme={selectedTheme}
-        onChange={handleEditorChange}
-        onMount={handleEditorDidMount}
-        loading={
+        <Suspense fallback={
           <div className="flex items-center justify-center h-full bg-[#1e1e1e]">
             <div className="text-center space-y-4">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
-              <p className="text-gray-400">Loading editor...</p>
+              <p className="text-gray-400">Loading Monaco Editor...</p>
             </div>
           </div>
-        }
-        options={{
-          fontSize: 21,
-          fontFamily: "'Consolas', 'Courier New', monospace",
-          lineNumbers: 'on',
-          minimap: { enabled: false }, 
-          scrollBeyondLastLine: false,
-          automaticLayout: true,
-          wordWrap: 'on',
-          cursorStyle: 'line',
-          cursorBlinking: 'blink',
-          cursorSmoothCaretAnimation: 'on',
-          formatOnPaste: false,
-          formatOnType: false,
-          textDirection: 'ltr',
-          fontLigatures: false,
-          disableMonospaceOptimizations: true,
-          renderWhitespace: 'none',
-          renderControlCharacters: false,
-          renderIndentGuides: false,
-          folding: true,
-          glyphMargin: false
-        }}
-        key={currentFile.id}
-      />
+        }>
+          <MonacoEditor
+            height="100%"
+            defaultLanguage={editorLanguage}
+            language={editorLanguage}
+            value={currentContent}
+            theme={selectedTheme}
+            onChange={handleEditorChange}
+            onMount={handleEditorDidMount}
+            loading={
+              <div className="flex items-center justify-center h-full bg-[#1e1e1e]">
+                <div className="text-center space-y-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+                  <p className="text-gray-400">Loading editor...</p>
+                </div>
+              </div>
+            }
+            options={{
+              fontSize: 21,
+              fontFamily: "'Consolas', 'Courier New', monospace",
+              lineNumbers: 'on',
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              wordWrap: 'on',
+              cursorStyle: 'line',
+              cursorBlinking: 'blink',
+              cursorSmoothCaretAnimation: 'on',
+              formatOnPaste: false,
+              formatOnType: false,
+              textDirection: 'ltr',
+              fontLigatures: false,
+              disableMonospaceOptimizations: true,
+              renderWhitespace: 'none',
+              renderControlCharacters: false,
+              renderIndentGuides: false,
+              folding: true,
+              glyphMargin: false
+            }}
+            key={currentFile.id}
+          />
+        </Suspense>
       </div>
       {/* Render AI assistant when enabled */}
-      {isAIEnabled && <AIAssistant />}
+      {isAIEnabled && (
+        <Suspense fallback={<div>Loading AI Assistant...</div>}>
+          <AIAssistant />
+        </Suspense>
+      )}
     </div>
   );
 };
