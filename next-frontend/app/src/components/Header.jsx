@@ -1,6 +1,7 @@
+"use client";
 import React, { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { setTheme, setCurrentFile, closeFile, setIsAIEnabled } from '../redux/slices/editorSlice';
@@ -10,8 +11,10 @@ import { setExecuting, setOutput, setExecutionError, resetExecution } from '../r
 import { toast } from 'react-hot-toast';
 
 const Header = () => {
-  const { folderId, fileId } = useParams();
-  const navigate = useNavigate();
+  const params = useParams();
+  const folderId = params.folderId;
+  const fileId = params.fileId;
+  const searchParams = useSearchParams();
   const dispatch = useDispatch();
   const { currentFile, openFiles, unsavedChanges, selectedTheme, isAIEnabled } = useSelector((state) => state.editor);
   const { activeFiles } = useSelector((state) => state.editor);
@@ -21,20 +24,15 @@ const Header = () => {
   const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomParam = urlParams.get('room');
-    
+    const roomParam = searchParams.get('room');
+
     if (roomParam) {
       setCurrentRoomId(roomParam);
     } else {
       const newRoomId = uuidv4().substring(0, 8);
       setCurrentRoomId(newRoomId);
-      const newSearchParams = new URLSearchParams(window.location.search);
-      newSearchParams.set('room', newRoomId);
-      const newPath = `${window.location.pathname}${newSearchParams.toString() ? '?' : ''}${newSearchParams.toString()}`;
-      window.history.pushState(null, '', newPath);
     }
-  }, []);
+  }, [searchParams]);
 
   const joinRoom = (roomId) => {
     console.log('Joining room:', roomId);
@@ -54,12 +52,11 @@ const Header = () => {
   const [copied, setCopied] = useState(false);
   
   const handleShareRoom = () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomParam = urlParams.get('room');
-    
+    const roomParam = searchParams.get('room');
+
     if (roomParam) {
-      const shareableUrl = window.location.href;
-      
+      const shareableUrl = `${window.location.origin}${window.location.pathname}?${searchParams.toString()}`;
+
       navigator.clipboard.writeText(shareableUrl)
         .then(() => {
           setCopied(true);
