@@ -9,7 +9,11 @@ loader.config({
   }
 });
 
-if (!window.monacoLoaded) {
+// Check if code is running in browser environment
+const isBrowser = typeof window !== 'undefined';
+
+// Only execute this code on the client side
+if (isBrowser && !window.monacoLoaded) {
   loader.init().then((monaco) => {
     window.monacoLoaded = true;
     console.log('Monaco editor loaded successfully');

@@ -7,6 +7,7 @@ const initialState = {
   selectedLanguage: 'javascript',
   selectedTheme: 'vs-dark',
   unsavedChanges: {}, // Track unsaved changes per file
+  isAIEnabled: false, // Initialize AI assistant as disabled
 };
 
 const editorSlice = createSlice({

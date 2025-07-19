@@ -30,12 +30,18 @@ export const getLanguageId = (fileName) => {
 // Submit code for execution
 export const executeCode = async (code, language, input = '') => {
   try {
+    const apiKey = process.env.NEXT_PUBLIC_JUDGE0_API_KEY;
+
+    if (!apiKey) {
+      throw new Error('Judge0 API key not found. Please check your environment variables.');
+    }
+
     // Step 1: Create a submission
     const createSubmissionResponse = await fetch(`${JUDGE0_API_URL}/submissions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-RapidAPI-Key': process.env.REACT_APP_JUDGE0_API_KEY,
+        'X-RapidAPI-Key': apiKey,
         'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com'
       },
       body: JSON.stringify({
@@ -65,7 +71,7 @@ export const executeCode = async (code, language, input = '') => {
       const getResultResponse = await fetch(`${JUDGE0_API_URL}/submissions/${token}`, {
         method: 'GET',
         headers: {
-          'X-RapidAPI-Key': process.env.REACT_APP_JUDGE0_API_KEY,
+          'X-RapidAPI-Key': apiKey,
           'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com'
         }
       });

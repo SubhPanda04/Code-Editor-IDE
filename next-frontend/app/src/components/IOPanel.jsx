@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect } from 'react';
 import { FaTerminal, FaKeyboard, FaSpinner } from 'react-icons/fa';
 import { useSelector, useDispatch } from 'react-redux';
