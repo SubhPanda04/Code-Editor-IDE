@@ -1,9 +1,10 @@
+"use client";
 import React, { useEffect, useState } from 'react';
 import { FaFolder, FaFolderOpen, FaChevronRight, FaChevronDown, FaPlus, FaTrash, FaEdit } from 'react-icons/fa';
 import { Code2 } from 'lucide-react';
 import { SiJavascript, SiPython, SiHtml5, SiCss3, SiCplusplus, SiRust, SiGo } from 'react-icons/si';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { setCurrentFile, setFileContent } from '../redux/slices/editorSlice';
 import Collaborators from './Collaborators';
 import JoinRequest from './JoinRequest';
@@ -49,7 +50,7 @@ const findFileInFolder = (items, targetFileId) => {
 
 const FileTreeItem = ({ item, expandedFolders, toggleFolder, folderId }) => {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
+  const router = useRouter();
   const isFolder = item.type === 'folder';
   const isExpanded = expandedFolders.includes(item.id);
   
@@ -59,7 +60,7 @@ const FileTreeItem = ({ item, expandedFolders, toggleFolder, folderId }) => {
     } else {
       dispatch(setCurrentFile(item));
       dispatch(setFileContent({ fileId: item.id, content: item.content || '' }));
-      navigate(`/editor/${folderId}/${item.id}`);
+      router.push(`/editor/${folderId}/${item.id}`);
     }
   };
   
@@ -108,12 +109,12 @@ const Sidebar = ({ folderId }) => {
   const [expandedFolders, setExpandedFolders] = useState([]);
   const [collaborators, setCollaborators] = useState([]);
   const [joinRequests, setJoinRequests] = useState([]);
-  const location = useLocation();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [ws, setWs] = useState(null);
   
   useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const roomParam = urlParams.get('room');
+    const roomParam = searchParams.get('room');
     
     if (roomParam) {
       console.log('Initializing Sidebar WebSocket for room:', roomParam);
@@ -185,13 +186,13 @@ const Sidebar = ({ folderId }) => {
         }
       };
     }
-  }, [location.search]);
+  }, [searchParams]);
   
   const handleAcceptJoinRequest = (userId, userName) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
         type: 'acceptJoinRequest',
-        roomId: new URLSearchParams(location.search).get('room'),
+        roomId: searchParams.get('room'),
         userId,
         userName
       }));
@@ -203,7 +204,7 @@ const Sidebar = ({ folderId }) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
         type: 'rejectJoinRequest',
-        roomId: new URLSearchParams(location.search).get('room'),
+        roomId: searchParams.get('room'),
         userId,
         userName
       }));

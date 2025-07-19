@@ -1,3 +1,4 @@
+"use client";
 import React, { useEffect, useState } from 'react'
 import { Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { Projects, SignUp } from '../container';

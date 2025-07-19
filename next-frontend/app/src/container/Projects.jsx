@@ -1,8 +1,9 @@
+"use client";
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { FaFolder, FaTrash, FaPencilAlt, FaChevronDown, FaChevronRight, FaJs, FaPython, FaJava, FaHtml5, FaCss3, FaPlus } from 'react-icons/fa';
 import { Code2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { 
   collection, 
   addDoc, 
@@ -22,6 +23,7 @@ import { setPlaygrounds, setLoading, setError, clearPlaygrounds } from '../redux
 import { setCurrentFolder } from '../redux/slices/fileSystemSlice';
 import { setCurrentFile, setFileContent } from '../redux/slices/editorSlice';
 import { SiTypescript, SiCplusplus, SiRust, SiGo } from 'react-icons/si';
+import { onAuthStateChanged } from 'firebase/auth';
 
 
 const findFileInFolder = (items, targetFileId) => {
@@ -65,10 +67,11 @@ const getFileIcon = (fileName) => {
 };
 
 const Projects = () => {
-  const navigate = useNavigate();
+  const router = useRouter();
   const dispatch = useDispatch();
   const { playgrounds, loading, error } = useSelector((state) => state.playground);
   const [expandedFolders, setExpandedFolders] = useState(new Set());
+  const [userName, setUserName] = useState('User');
 
   const toggleFolder = (folderId) => {
     setExpandedFolders(prev => {
@@ -83,33 +86,31 @@ const Projects = () => {
   };
 
   useEffect(() => {
+    // Set userName from localStorage on client side
+    setUserName(localStorage.getItem('userName') || 'User');
+  }, []);
+
+  useEffect(() => {
     let isComponentMounted = true;
     let unsubscribeListener = null;
-    
-    const fetchPlaygrounds = async () => {
-      if (!isComponentMounted) return;
-      
+    let unsubscribeAuth = null;
+
+    const fetchPlaygrounds = async (userUID) => {
+      if (!isComponentMounted || !userUID) return;
+
       try {
         dispatch(setLoading(true));
-      
-        const userUID = auth.currentUser?.uid;
-        
-        if (!userUID) {
-          console.log("No user ID found");
-          if (isComponentMounted) dispatch(setLoading(false));
-          return;
-        }
-      
+
         const playgroundsQuery = query(
           collection(db, "playgrounds"),
           where("userId", "==", userUID)
         );
-      
+
         unsubscribeListener = onSnapshot(
           playgroundsQuery,
           (querySnapshot) => {
             if (!isComponentMounted) return;
-            
+
             const processedData = querySnapshot.docs.map(doc => {
               const data = doc.data();
               const cleanObject = {
@@ -120,7 +121,7 @@ const Projects = () => {
                 createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : Date.now(),
                 updatedAt: data.updatedAt?.toMillis ? data.updatedAt.toMillis() : Date.now()
               };
-            
+
               if (Array.isArray(data.items)) {
                 cleanObject.items = JSON.parse(JSON.stringify(
                   data.items.map(item => {
@@ -136,10 +137,10 @@ const Projects = () => {
               } else {
                 cleanObject.items = [];
               }
-              
+
               return cleanObject;
             });
-            
+
             if (isComponentMounted) {
               dispatch(setPlaygrounds(processedData));
               dispatch(setLoading(false));
@@ -161,19 +162,38 @@ const Projects = () => {
         }
       }
     };
-    
-    fetchPlaygrounds();
-    
+
+    // Listen for authentication state changes
+    unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (!isComponentMounted) return;
+
+      if (user) {
+        console.log("User authenticated:", user.uid);
+        fetchPlaygrounds(user.uid);
+      } else {
+        console.log("No user authenticated - redirecting to auth");
+        if (isComponentMounted) {
+          dispatch(setLoading(false));
+          router.push('/home/auth');
+        }
+      }
+    });
+
     return () => {
       console.log("Projects component unmounting - cleaning up listeners");
       isComponentMounted = false;
-      
+
       if (unsubscribeListener) {
         unsubscribeListener();
         unsubscribeListener = null;
       }
+
+      if (unsubscribeAuth) {
+        unsubscribeAuth();
+        unsubscribeAuth = null;
+      }
     };
-  }, [dispatch]); 
+  }, [dispatch, router]);
 
   const handleNestedOperation = async (parentFolderId, nestedParentId, operation, type) => {
     try {
@@ -250,8 +270,9 @@ const Projects = () => {
     try {
       await auth.signOut();
       localStorage.clear();
+      setUserName('User');
       dispatch(clearPlaygrounds());
-      navigate('/home/auth');
+      router.push('/home/auth');
     } catch (error) {
       dispatch(setError("Failed to sign out. Please try again."));
     }
@@ -397,34 +418,39 @@ const Projects = () => {
   const handleFileClick = (e, folderId, fileId) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!folderId || !fileId) {
       console.error("Missing folderId or fileId");
       return;
     }
-    
+
+    // Check authentication state
     const user = auth.currentUser;
     if (!user) {
       dispatch(setError("You must be logged in to access the editor"));
-      navigate('/home/auth');
+      router.push('/home/auth');
       return;
     }
-  
+
     const folder = playgrounds.find(p => p.id === folderId);
+    if (!folder) {
+      dispatch(setError("Folder not found"));
+      return;
+    }
+
     const file = findFileInFolder(folder.items, fileId);
-    
+
     if (file) {
       dispatch(setCurrentFolder(folder));
       dispatch(setCurrentFile(file));
-      dispatch(setFileContent({ 
-        fileId: file.id, 
-        content: file.content || '' 
+      dispatch(setFileContent({
+        fileId: file.id,
+        content: file.content || ''
       }));
-      
-      navigate(`/editor/${folderId}/${fileId}`, { 
-        replace: true, 
-        state: { noRefresh: true } 
-      });
+
+      router.push(`/editor/${folderId}/${fileId}`);
+    } else {
+      dispatch(setError("File not found"));
     }
   };
 
@@ -520,9 +546,11 @@ const Projects = () => {
       const folderName = prompt("Enter folder name:");
       if (!folderName) return;
 
-      const userUID = auth.currentUser?.uid;
-      if (!userUID) {
+      // Check authentication state
+      const user = auth.currentUser;
+      if (!user) {
         dispatch(setError("You must be logged in to create folders"));
+        router.push('/home/auth');
         return;
       }
 
@@ -530,7 +558,7 @@ const Projects = () => {
         name: folderName,
         type: 'folder',
         items: [],
-        userId: userUID,  
+        userId: user.uid,
         createdAt: serverTimestamp()
       };
 
@@ -577,7 +605,7 @@ const Projects = () => {
             </button>
             <div className="h-14 px-8 rounded-xl bg-gradient-to-r from-blue-600 to-blue-400 flex items-center justify-center shadow-lg">
               <span className="text-white text-2xl font-semibold">
-                Welcome, {localStorage.getItem('userName') || 'User'}
+                Welcome, {userName}
               </span>
             </div>
           </div>

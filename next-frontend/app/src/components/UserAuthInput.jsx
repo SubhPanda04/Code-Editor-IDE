@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from 'react'
 import { FaEye, FaEyeSlash } from 'react-icons/fa6'
 import { motion } from 'framer-motion'
@@ -27,11 +28,11 @@ const UserAuthInput = ({label,placeHolder,isPass,setStateFunction,Icon,setGetEma
             rounded-md px-4 py-1 bg-gray-200 ${
                 !isEmailValid && placeHolder === "Email" && value.length > 0 && "border-2 border-red-500"
             }`}>
-            <Icon className='text-text555 text-2xl'/>
+            <Icon className='text-black text-2xl'/>
             <input type={isPass && showPass  ? "password" : "text"} 
                    placeholder={placeHolder}
                    className="flex-1 w-full h-full py-2 outline-none border-none
-                    bg-transparent text-text555 text-lg"
+                    bg-transparent text-black text-lg"
                     value={value}
                     onChange={handleTextChange}
             />

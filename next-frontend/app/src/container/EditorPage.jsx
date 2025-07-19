@@ -1,29 +1,33 @@
-import React, { useEffect, useState } from 'react';
+"use client";
+import React, { useEffect, useState, Suspense } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase.config';
-import { Code2 } from 'lucide-react'; 
+import { Code2 } from 'lucide-react';
 import { setCurrentFile, setFileContent, closeFile } from '../redux/slices/editorSlice';
 import { setCurrentFolder } from '../redux/slices/fileSystemSlice';
 import { setError } from '../redux/slices/uiSlice';
 import { resetExecution } from '../redux/slices/codeExecutionSlice';
-import { Header, Sidebar, Editor, IOPanel } from '../components';
-import '../config/editorConfig'; 
+import { Header, Sidebar, IOPanel } from '../components';
+import '../config/editorConfig';
 import { FaTimes } from 'react-icons/fa';
-import { useLocation } from 'react-router-dom';
+
+// Lazy load heavy components
+const Editor = React.lazy(() => import('../components/Editor').then(module => ({ default: module.default })));
 
 const EditorPage = () => {
-  const { folderId, fileId } = useParams();
-  const location = useLocation();
+  const params = useParams();
+  const folderId = params.folderId;
+  const fileId = params.fileId;
+  const searchParams = useSearchParams();
   const dispatch = useDispatch();
-  const navigate = useNavigate();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [roomId, setRoomId] = useState(null);
   
   useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const roomParam = urlParams.get('room');
+    const roomParam = searchParams.get('room');
     
     if (roomParam) {
       setRoomId(roomParam);
@@ -85,12 +89,12 @@ const EditorPage = () => {
         }
       };
     }
-  }, [location.search]);
+  }, [searchParams]);
   
   useEffect(() => {
     const handleBackButton = (e) => {
       e.preventDefault();
-      navigate('/home/projects');
+      router.push('/home/projects');
     };
 
     window.addEventListener('popstate', handleBackButton);
@@ -98,7 +102,7 @@ const EditorPage = () => {
     return () => {
       window.removeEventListener('popstate', handleBackButton);
     };
-  }, [navigate]);
+  }, [router]);
 
   const { isInputVisible, isOutputVisible } = useSelector((state) => state.ui);
   const { openFiles, currentFile, unsavedChanges } = useSelector((state) => state.editor);
@@ -117,8 +121,7 @@ const EditorPage = () => {
   };
   
   useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const roomParam = urlParams.get('room');
+    const roomParam = searchParams.get('room');
     
     if (roomParam) {
       const isNewRoom = !localStorage.getItem('currentRoomId') || 
@@ -135,7 +138,7 @@ const EditorPage = () => {
       localStorage.removeItem('isRoomOwner');
       localStorage.removeItem('currentRoomId');
     }
-  }, [location.search]);
+  }, [searchParams]);
   
   useEffect(() => {
     const loadFolderData = async () => {
@@ -185,7 +188,7 @@ const EditorPage = () => {
           }
         } else {
           dispatch(setError('Folder not found'));
-          navigate('/home/projects');
+          router.push('/home/projects');
         }
       } catch (error) {
         console.error('Error loading folder:', error);
@@ -196,7 +199,7 @@ const EditorPage = () => {
     };
     
     loadFolderData();
-  }, [folderId, fileId, dispatch, navigate]);
+  }, [folderId, fileId, dispatch, router]);
 
   if (loading) {
     return (
@@ -212,7 +215,7 @@ const EditorPage = () => {
   const handleFileTabClick = (file) => {
     dispatch(setCurrentFile(file));
     dispatch(resetExecution());
-    navigate(`/editor/${folderId}/${file.id}`);
+    router.push(`/editor/${folderId}/${file.id}`);
   };
 
   const handleCloseFile = async (e, fileId) => {
@@ -226,15 +229,15 @@ const EditorPage = () => {
     if (remainingFiles.length > 0) {
       const nextFile = remainingFiles[remainingFiles.length - 1];
       await dispatch(setCurrentFile(nextFile));
-      navigate(`/editor/${folderId}/${nextFile.id}, { replace: true }`);
+      router.push(`/editor/${folderId}/${nextFile.id}`);
     } else {
       await dispatch(setCurrentFile(null));
-      navigate(`/editor/${folderId}, { replace: true }`);
+      router.push(`/editor/${folderId}`);
     }
   };
 
   if (!folderId) {
-    navigate('/home/projects', { replace: true });
+    router.push('/home/projects');
     return null;
   }
 
@@ -273,7 +276,16 @@ const EditorPage = () => {
           {/* Editor content */}
           <div className={`flex-grow ${!currentFile ? 'flex items-center justify-center' : ''}`}>
             {currentFile ? (
-              <Editor fileId={currentFile.id} />
+              <Suspense fallback={
+                <div className="flex items-center justify-center h-full bg-[#1e1e1e]">
+                  <div className="text-center space-y-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+                    <p className="text-gray-400">Loading Editor...</p>
+                  </div>
+                </div>
+              }>
+                <Editor fileId={currentFile.id} />
+              </Suspense>
             ) : (
               <div className="text-gray-400 text-center flex flex-col items-center">
                 <Code2 className="w-12 h-12 mb-4 opacity-40" />

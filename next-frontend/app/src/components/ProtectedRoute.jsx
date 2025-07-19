@@ -1,11 +1,13 @@
+"use client";
 import React, { useEffect, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { useRouter, usePathname } from 'next/navigation';
 import { auth } from '../config/firebase.config';
 
 const ProtectedRoute = ({ children }) => {
   const [authChecked, setAuthChecked] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const location = useLocation();
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -25,7 +27,8 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/home/auth" state={{ from: location.pathname }} replace />;
+    router.push('/home/auth');
+    return null;
   }
 
   return children;

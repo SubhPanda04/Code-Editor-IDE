@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect } from 'react'
 import { UserAuthInput } from '../components'
 import { FaEnvelope } from 'react-icons/fa6'
@@ -10,7 +11,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'fire
 import { auth, db } from '../config/firebase.config'
 import { fadeInOut } from '../animations'
 import { doc, setDoc } from "firebase/firestore";
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 
 const SignUp = () => {
     const [email, setEmail] = useState("")
@@ -19,7 +20,7 @@ const SignUp = () => {
     const [isLogin, setisLogin] = useState(false)
     const [alert, setAlert] = useState(false)
     const [alertMsg, setAlertMsg] = useState("")
-    const navigate = useNavigate();
+    const router = useRouter();
 
     useEffect(() => {
         // Clear any existing auth state
@@ -46,7 +47,7 @@ const SignUp = () => {
 
                 await setDoc(doc(db, "users", user.uid), userData);
                 localStorage.setItem('userName', user.email.split('@')[0]);
-                navigate('/home/projects');
+                router.push('/home/projects');
             } catch (err) {
                 console.log("Error:", err);
                 setAlert(true);
@@ -61,7 +62,7 @@ const SignUp = () => {
                 const userCred = await signInWithEmailAndPassword(auth, email, password);
                 if (userCred) {
                     localStorage.setItem('userName', userCred.user.email.split('@')[0]);
-                    navigate('/home/projects');
+                    router.push('/home/projects');
                 }
             } catch (err) {
                 console.log("Login error ", err.code);
