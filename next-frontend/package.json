@@ -15,7 +15,7 @@
     "@tailwindcss/postcss": "^4.1.13",
     "firebase": "^12.2.1",
     "framer-motion": "^12.23.12",
-    "lodash": "^4.17.21",
+    "lodash": "^4.17.23",
     "lucide-react": "^0.544.0",
     "monaco-themes": "^0.4.4",
     "next": "15.5.3",
